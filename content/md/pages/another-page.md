@@ -38,8 +38,11 @@ Let's try `do-seq` with a `div`:
 ```
 
 ```klipse-cljs
-(require '[reagent.core :as r]
-         '[promesa.core :as p])
+(require '[reagent.core :as r])
+```
+
+```klipse-cljs
+; (require '[promesa.cljs.core :as p])
 ```
 
 ```klipse-reagent
@@ -50,22 +53,44 @@ Let's try `do-seq` with a `div`:
 ```
 
 ```klipse-reagent
-(def fib-results (r/atom []))
+;(def fib-results (r/atom []))
 
 ;(doseq [x (range 10)]
 ;  (swap! fib-results conj (fib x)))
 
-(loop [x 0]
-  (if (<= x 10)
-    (do
-      (js/setTimeout (swap! fib-results conj (fib x)) 1000)
-      (recur (inc x)))))
+;(loop [x 0]
+;  (if (<= x 10)
+;    (do
+;      (js/setTimeout (swap! fib-results conj (fib x)) 1000)
+;      (recur (inc x)))))
+
+;[:p (str @fib-results)]
+
+[:p "Silly nonsense"]
+```
+
+```klipse-reagent
+(def fib-results (r/atom []))
 
 [:p (str @fib-results)]
 ```
 
 ```klipse-cljs
-(+ 2 3)
+(require-macros '[cljs.core.async.macros :refer [go go-loop]])
+(require '[cljs.core.async :as async])
+
+(def c (async/chan))
+
+(go-loop [n (async/<! c)]
+  (<! (timeout 1000))
+  (when n
+    (swap! fib-results conj (fib n))
+    (recur (async/<! c))))
+
+(doseq [n (range 10)]
+  (async/put! c n))
+
+@fib-results
 ```
 
 <div>
