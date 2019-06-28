@@ -60,11 +60,13 @@ totally not a post
 ```klipse-reagent
 (defn play-pause-button [is-running]
   [:button {:on-click flip-status}
-    (if is-running "Stop" "Start")])
+    (if is-running
+      [:i {:class "fa fa-pause-circle" :style {:color "red" :font-size "200%"}}]
+      [:i {:class "fa fa-play-circle" :style {:color "green" :font-size "200%"}}])])
+;    (if is-running "Stop" "Start")])
 
-; It looks like you need to have component definitions in a function in
-; order to use the key metadata thing, and that seems critical for
-; components updating properly.
+; It looks like you need to have component definitions for the updating
+; to work correctly, but I don't honestly know why.
 (defn fib-output-component []
   [:div
     ; It's useful to put the button _above_ the output, otherwise it keeps
