@@ -24,7 +24,6 @@ totally not a post
 (def fib-results (r/atom []))
 
 (defn fib-results-component []
-  ^{:key (count @fib-results)}
   [:div [:p (str @fib-results)]])
 
 (def running (r/atom false))
@@ -71,7 +70,6 @@ totally not a post
     ; It's useful to put the button _above_ the output, otherwise it keeps
     ; getting pushed down the page and you end up having to chase it it you
     ; want to stop the thing.
-    ^{:key @running}
     [play-pause-button @running]
     [fib-results-component]])
 
