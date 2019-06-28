@@ -22,11 +22,15 @@ totally not a post
 
 ```klipse-cljs
 (def fib-results (r/atom []))
-(def running (r/atom false))
 
 (defn fib-results-component []
   ^{:key (count @fib-results)}
   [:div [:p (str @fib-results)]])
+
+(def running (r/atom false))
+
+(defn flip-status []
+  (swap! running not))
 ```
 
 ```klipse-cljs
@@ -40,18 +44,38 @@ totally not a post
     (swap! fib-results conj (fib n))
     (recur (async/<! c))))
 
+; It appears that you need at least *some* timeout/sleep/pause here
+; for the UI to have the opportunity to update.
 (go
-  (doseq [n (range 10)]
-    (async/>! c n)
-    ; It appears that you need at least *some* timeout/sleep/pause here
-    ; for the UI to have the opportunity to update. Weirdly, though, 0
-    ; is enough -- it's obvious the call to `async/timeout` that matters,
-    ; not it's argument.
-    (async/<! (async/timeout 0))))
+  (loop [n 0]
+    (if (and @running (< n 35))
+      (do
+        (async/>! c n)
+        (async/<! (async/timeout 100))
+        (recur (inc n)))
+      (do
+        (async/<! (async/timeout 100))
+        (recur n)))))
 ```
 
 ```klipse-reagent
-[fib-results-component]
+(defn play-pause-button [is-running]
+  [:button {:on-click flip-status}
+    (if is-running "Stop" "Start")])
+
+; It looks like you need to have component definitions in a function in
+; order to use the key metadata thing, and that seems critical for
+; components updating properly.
+(defn fib-output-component []
+  [:div
+    ; It's useful to put the button _above_ the output, otherwise it keeps
+    ; getting pushed down the page and you end up having to chase it it you
+    ; want to stop the thing.
+    ^{:key @running}
+    [play-pause-button @running]
+    [fib-results-component]])
+
+[fib-output-component]
 ```
 
 <div>
