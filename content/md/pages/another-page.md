@@ -12,15 +12,19 @@ totally not a post
 (map #(* % %) (range 10))
 ```
 
-Let's try `do-seq` with a `div`:
+The point here is to try to print, _very slowly_, the fibonacci terms in the `div` below:
 
 ```klipse-cljs
-(defn report
-  [value]
-  (let [previous-output (.-innerHTML (js/document.getElementById "run-output"))]
+(require '[reagent.core :as r])
+
+(def report-string (atom "working"))
+
+(defn report-now
+  []
+  (let [report-div (js/document.getElementById "run-output")]
     (set!
-      (.-innerHTML (js/document.getElementById "run-output"))
-      (str previous-output "\n" value))))
+      (.-innerHTML report-div)
+      @report-string)))
 
 (defn fib
   [n]
@@ -30,43 +34,17 @@ Let's try `do-seq` with a `div`:
 ```
 
 ```klipse-cljs
-(loop [x 0]
-  (if (<= x 10)
-    (do
-      (report (fib x))
-      (recur (inc x)))))
+(do
+  (report-now)
+  (loop [x 0]
+    (if (<= x 30)
+      (do
+        (swap! report-string #(print-str % (fib x)))
+        (report-now)
+        (recur (inc x))
+        ))))
 ```
 
-```klipse-cljs
-(require '[reagent.core :as r]
-         '[promesa.core :as p])
-```
-
-```klipse-reagent
-(defn hello [name]
-  [:p (str "Hello " name "!")])
-
-[hello "Klipse"]
-```
-
-```klipse-reagent
-(def fib-results (r/atom []))
-
-;(doseq [x (range 10)]
-;  (swap! fib-results conj (fib x)))
-
-(loop [x 0]
-  (if (<= x 10)
-    (do
-      (js/setTimeout (swap! fib-results conj (fib x)) 1000)
-      (recur (inc x)))))
-
-[:p (str @fib-results)]
-```
-
-```klipse-cljs
-(+ 2 3)
-```
 
 <div>
   <pre id="run-output">Output will go here eventually…</pre>
