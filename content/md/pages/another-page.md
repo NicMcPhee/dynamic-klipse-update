@@ -69,10 +69,12 @@ Let's try `do-seq` with a `div`:
 [:p "Silly nonsense"]
 ```
 
-```klipse-reagent
+```klipse-cljs
 (def fib-results (r/atom []))
 
-[:p (str @fib-results)]
+(defn fib-results-component []
+  ^{:key (count @fib-results)}
+  [:div [:p (str @fib-results)]])
 ```
 
 ```klipse-cljs
@@ -82,15 +84,22 @@ Let's try `do-seq` with a `div`:
 (def c (async/chan))
 
 (go-loop [n (async/<! c)]
-  (<! (timeout 1000))
   (when n
     (swap! fib-results conj (fib n))
     (recur (async/<! c))))
 
-(doseq [n (range 10)]
-  (async/put! c n))
+(go
+  (doseq [n (range 10)]
+    (async/>! c n)
+    ; It appears that you need at least *some* timeout/sleep/pause here
+    ; for the UI to have the opportunity to update. Weirdly, though, 0
+    ; is enough -- it's obvious the call to `async/timeout` that matters,
+    ; not it's argument.
+    (async/<! (async/timeout 0))))
+```
 
-@fib-results
+```klipse-reagent
+[fib-results-component]
 ```
 
 <div>
