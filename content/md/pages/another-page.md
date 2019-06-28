@@ -36,25 +36,25 @@ totally not a post
 (require-macros '[cljs.core.async.macros :refer [go go-loop]])
 (require '[cljs.core.async :as async])
 
-(def c (async/chan))
+(def fib-input (async/chan))
+(def fib-output
+  (async/map fib [fib-input]))
 
-(go-loop [n (async/<! c)]
-  (when n
-    (swap! fib-results conj (fib n))
-    (recur (async/<! c))))
-
-; It appears that you need at least *some* timeout/sleep/pause here
-; for the UI to have the opportunity to update.
+; By having this wait until it gets a response to the previous
+; "request" before adding the next value of `n` to the input
+; channel we don't need to timeouts anymore.
 (go
   (loop [n 0]
-    (if (and @running (< n 35))
-      (do
-        (async/>! c n)
-        (async/<! (async/timeout 100))
-        (recur (inc n)))
-      (do
-        (async/<! (async/timeout 100))
-        (recur n)))))
+    (if (>= n 35)
+      (async/close! fib-input)
+      (if @running
+        (do
+          (async/>! fib-input n)
+          (let [result (async/<! fib-output)]
+            (swap! fib-results conj result))
+          (recur (inc n)))
+        (do
+          (recur n))))))
 ```
 
 ```klipse-reagent
@@ -63,7 +63,6 @@ totally not a post
     (if is-running
       [:i {:class "fa fa-pause-circle" :style {:color "red" :font-size "200%"}}]
       [:i {:class "fa fa-play-circle" :style {:color "green" :font-size "200%"}}])])
-;    (if is-running "Stop" "Start")])
 
 ; It looks like you need to have component definitions for the updating
 ; to work correctly, but I don't honestly know why.
@@ -73,6 +72,7 @@ totally not a post
     ; getting pushed down the page and you end up having to chase it it you
     ; want to stop the thing.
     [play-pause-button @running]
+    (if @running [:button {:on-click flip-status} [:i {:class "fa fa-stop-circle" :style {:color "red" :font-size "200%"}}]])
     [fib-results-component]])
 
 [fib-output-component]
