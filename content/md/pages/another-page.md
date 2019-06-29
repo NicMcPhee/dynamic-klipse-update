@@ -100,7 +100,7 @@ totally not a post
       ; If the result is nil that means we've run out of inputs.
       (swap! system-state assoc :app-status :shutdown))))
 
-(def num-iterations 40)
+(def num-iterations 20)
 
 (defn reset-system []
   (run-loop num-iterations))
