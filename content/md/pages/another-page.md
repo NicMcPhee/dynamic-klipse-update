@@ -24,7 +24,10 @@ totally not a post
 (def fib-results (r/atom []))
 
 (defn fib-results-component []
-  [:div [:p (clojure.string/join "\n" (map str @fib-results))]])
+  [:div {:style {:height "200px" :max-height "200px" :overflow "auto"}
+         :id "fib-results"}
+    [:p
+      (clojure.string/join "\n" (map str @fib-results))]])
 ```
 
 ```klipse-cljs

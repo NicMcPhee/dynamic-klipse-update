@@ -166,3 +166,24 @@ pre, code, .hljs {
         text-align: left;
     }
 }
+
+/* Scrollbar styles */
+/* Cribbed from https://www.quackit.com/html/codes/html_scroll_box.cfm */
+/*
+ * Added to cause the scrollbars to be more visible when the output
+ * gets long.
+ */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: gray;
+  border-radius: 10px;
+}
