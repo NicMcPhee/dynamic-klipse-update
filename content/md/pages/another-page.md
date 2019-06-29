@@ -24,43 +24,91 @@ totally not a post
 (def fib-results (r/atom []))
 
 (defn fib-results-component []
-  [:div [:p (str @fib-results)]])
-
-(def running (r/atom false))
-
-(defn flip-status []
-  (swap! running not))
+  [:div [:p (clojure.string/join "\n" (map str @fib-results))]])
 ```
 
 ```klipse-cljs
 (require-macros '[cljs.core.async.macros :refer [go go-loop]])
 (require '[cljs.core.async :as async])
 
-(def fib-input (async/chan))
-(def fib-output
-  (async/map fib [fib-input]))
+(defn controllable-channel [control-channel input-channel]
+  "Creates a new channel that copies elements from input-channel
+   as long as there are items in control-channel. One can control
+   the timing and number of items moving from input-channel to
+   ouput-channel by controlling the presence of items on the
+   control-channel. The particular values on the control-channel
+   are ignored. Once either control-channel or input-channel closes
+   then the resulting channel will also close."
+  (async/map (fn [x y] y) [control-channel input-channel]))
 
-; By having this wait until it gets a response to the previous
-; "request" before adding the next value of `n` to the input
-; channel we don't need to timeouts anymore.
-(go
-  (loop [n 0]
-    (if (>= n 35)
-      (async/close! fib-input)
-      (if @running
-        (do
-          (async/>! fib-input n)
-          (let [result (async/<! fib-output)]
-            (swap! fib-results conj result))
-          (recur (inc n)))
-        (do
-          (recur n))))))
+(def system-state (r/atom {}))
+
+(defn initialize-state [num-items]
+  (let [fib-input (async/chan)
+        fib-control (async/chan)
+        fib-output (async/map
+                      (fn [n] {:input n, :result (fib n)})
+                      [(controllable-channel fib-control fib-input)])]
+    (reset! system-state {
+      :fib-input fib-input
+      :fib-control fib-control
+      :fib-output fib-output
+      :events (async/chan)
+      ; Either :idle or :busy
+      :computation-state :idle
+      ; Either :stopped or :running or :shutdown
+      :app-status :stopped})
+    (reset! fib-results [])
+    (async/onto-chan fib-input (range num-items))))
+
+(defn stopped->running []
+  (swap! system-state assoc :app-status :running)
+  (when (= :idle (:computation-state @system-state))
+    (swap! system-state assoc :computation-state :busy)
+    (go
+      (async/>! (:fib-control @system-state) :run-next))))
+
+(defn running->stopped []
+  (swap! system-state assoc :app-status :stopped))
+
+(defn handle-play-pause [event]
+  (case (:app-status @system-state)
+    :stopped (stopped->running)
+    :running (running->stopped)))
+
+(defn process-result [{n :input, fib-n :result}]
+  (swap! fib-results conj fib-n)
+  (if (= :running (:app-status @system-state))
+    (go
+      ; We need this timeout so the computational side of the
+      ; system will sleep for a little, giving the UI side a
+      ; little access to the CPU to process user input.
+      (async/<! (async/timeout 100))
+      (async/>! (:fib-control @system-state) :run-next))
+    (swap! system-state assoc :computation-state :idle)))
+
+(defn run-loop [num-items]
+  (initialize-state num-items)
+  (go-loop []
+    (if-let [result (async/<! (:fib-output @system-state))]
+      (do
+        (process-result result)
+        (recur))
+      ; If the result is nil that means we've run out of inputs.
+      (swap! system-state assoc :app-status :shutdown))))
+
+(def num-iterations 40)
+
+(defn reset-system []
+  (run-loop num-iterations))
+
+(run-loop num-iterations)
 ```
 
 ```klipse-reagent
-(defn play-pause-button [is-running]
-  [:button {:on-click flip-status}
-    (if is-running
+(defn play-pause-button [app-status]
+  [:button {:on-click handle-play-pause}
+    (if (= app-status :running)
       [:i {:class "fa fa-pause-circle" :style {:color "red" :font-size "200%"}}]
       [:i {:class "fa fa-play-circle" :style {:color "green" :font-size "200%"}}])])
 
@@ -71,13 +119,13 @@ totally not a post
     ; It's useful to put the button _above_ the output, otherwise it keeps
     ; getting pushed down the page and you end up having to chase it it you
     ; want to stop the thing.
-    [play-pause-button @running]
-    (if @running [:button {:on-click flip-status} [:i {:class "fa fa-stop-circle" :style {:color "red" :font-size "200%"}}]])
+    (when-not (= :shutdown (:app-status @system-state))
+      [play-pause-button (:app-status @system-state)])
+    (when (not-empty @system-state)
+      [:button
+        {:on-click reset-system :style {:color "red" :font-size "150%"}}
+        "Reset"])
     [fib-results-component]])
 
 [fib-output-component]
 ```
-
-<div>
-  <pre id="run-output">Output will go here eventually…</pre>
-</div>
