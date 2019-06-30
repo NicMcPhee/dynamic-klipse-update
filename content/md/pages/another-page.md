@@ -1,12 +1,28 @@
-{:title "Another Page"
+{:title "Asynchronous, dynamic updates in klipse"
  :layout :page
  :page-index 1
- :klipse true}
+ :klipse true
+ :home? true}
 
-## Look at this sweet, sweet page
+## The problem
 
-this is another custom page
-totally not a post
+`klispe` provides a really nice way to do live code in the browser, but because
+JavaScript (and thus ClojureScript) is single-threaded you can't run anything
+that's going to take very long without completely locking up the browser. You
+also can't get any sort of output or status until your computation completely
+finishes, so it really does just look like your browser has died.
+
+TODO Create another page here that illustrates the problem described above.
+the necessary code is in some of the early commits to this repo.
+
+## Let's burn some cycles
+
+I'm going to use the simple, but exponential, recursive implementation of
+`(fib n)` as a simple way of generating some substantial computation. If you
+want, for example, to compute the first 40 Fibonacci that will take a few
+seconds. It would be nice if we could see the results "printed out" as they're
+being computed, but in a single threaded universe all 40 values will be
+computed before there's any kind of response in the browser.
 
 ```klipse-cljs
 (defn fib
@@ -15,6 +31,17 @@ totally not a post
     n
     (+ (fib (- n 1)) (fib (- n 2)))))
 ```
+
+I don't have time right now to explain all the snippets below, but they use
+Clojure's `core.async` library to decouple the computation of the Fibonacci
+numbers and the UX/browser.
+
+If you scroll to the bottom and click the "play" button it will start to
+print out Fibonacci numbers. You can pause as they're being printed, and use
+the "Reset" button reset the state and start over if you wish.
+
+You can also change the value of `num-iterations` (down near the bottom) to
+something larger or smaller as you see fit.
 
 ```klipse-cljs
 (require '[reagent.core :as r])
